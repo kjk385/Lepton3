@@ -6,6 +6,10 @@
 #include <stdio.h>
 #include <wiringPi.h>
 
+
+#define ANSI_COLOR_RED 		"\x1b[31m"
+#define ANSI_COLOR_GREEN  	"\x1b[32m"
+
 #define PACKET_SIZE 164
 #define PACKET_SIZE_UINT16 (PACKET_SIZE/2)
 #define PACKETS_PER_FRAME 60
@@ -21,6 +25,10 @@ LeptonThread::LeptonThread() : QThread()
 
 LeptonThread::~LeptonThread() {
 }
+
+
+
+
 
 void LeptonThread::run()
 {
@@ -83,7 +91,7 @@ void LeptonThread::run()
 				
 				if(resets == 2750) {
 					error_counter++;
-					printf("error_counter = %d\n",error_counter);
+				//	printf("error_counter = %d\n",error_counter);
 				//	printf("resets = %d\n",resets);
 					resets = 0;
 					//printf("Lost Camera Connection\n");
@@ -266,10 +274,15 @@ void LeptonThread::run()
 			
 			if(pin_flag == 0 && main_diff > 200){
 				digitalWrite(pin,HIGH) ;
+				printf(ANSI_COLOR_RED "Object Detected!\n");
 				pin_flag = 1; 
+
 			}
 			if(pin_flag == 1 && main_diff < 200){
 				digitalWrite(pin, LOW) ;
+				printf(ANSI_COLOR_GREEN "Object Cleared!\n");
+				//printf("\n");
+				//printf("\n");	
 				pin_flag = 0;
 			}
 			//printf("main_diff = %.1f\n",main_diff);	
