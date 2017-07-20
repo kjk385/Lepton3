@@ -5,11 +5,12 @@
 #include "Lepton_I2C.h"
 #include <stdio.h>
 #include <wiringPi.h>
-
+#include <term.h>
+#include <curses.h>
 
 #define ANSI_COLOR_RED 		"\x1b[31m"
 #define ANSI_COLOR_GREEN  	"\x1b[32m"
-
+#define ANSI_COLOR_RESET  	"\x1b[0m"
 #define PACKET_SIZE 164
 #define PACKET_SIZE_UINT16 (PACKET_SIZE/2)
 #define PACKETS_PER_FRAME 60
@@ -29,6 +30,20 @@ LeptonThread::~LeptonThread() {
 
 
 
+void ClearScreen()
+	{
+	if (!cur_term)
+		{
+			int result;
+			setupterm(NULL, STDOUT_FILENO, &result );
+			if (result <= 0)
+			return;
+		}
+	putp(tigetstr( "clear" ) );
+
+	}
+
+
 
 void LeptonThread::run()
 {
@@ -43,14 +58,16 @@ void LeptonThread::run()
 	int display_flag = 0;
 	int error_counter = 0;
 	int reboot_counter = 0;
-	
+	//int on_wait_counter = 0;
+	//int off_wait_counter = 0;
 	/*Segment received flags */
 	int segmentReceived_flag1 = 0;
 	int segmentReceived_flag2 = 0;
 	int segmentReceived_flag3 = 0;
 	int segmentReceived_flag4 = 0;
 	
-	
+	char* STATUS; 
+	STATUS = "CLEAR";
 	int segmentId = 0;
 	int frame_counter = 0;
 
@@ -268,23 +285,38 @@ void LeptonThread::run()
 			float main_diff = main_maxValue - main_minValue;
 			float main_scale = 255/main_diff;
 			
-		//	printf("main_diff = %5.1f, maxValue = %6d, minValue =%6d\n",main_diff,main_maxValue,main_minValue);	
+			//printf("main_diff = %5.1f, maxValue = %6d, minValue =%6d\n",main_diff,main_maxValue,main_minValue);	
 			//printf("\n");
-	
+			//printf(ANSI_COLOR_RESET "[ObjectPixelValue = %5.1f]\n",main_diff);
 			
 			if(pin_flag == 0 && main_diff > 200){
-				digitalWrite(pin,HIGH) ;
-				printf(ANSI_COLOR_RED "Object Detected!\n");
-				pin_flag = 1; 
-
+			//	on_wait_counter++;
+			//	if(on_wait_counter>2)
+			//	{
+					digitalWrite(pin,HIGH) ;
+					//printf(ANSI_COLOR_RED "Object Detected!  		[ObjectPixelValue = %5.1f] > THRESHOLD\n",main_diff);
+					printf(ANSI_COLOR_RED);
+					pin_flag = 1;
+					STATUS = "DETECTED";
+			//		off_wait_counter = 0; 
+			//	}
 			}
 			if(pin_flag == 1 && main_diff < 200){
-				digitalWrite(pin, LOW) ;
-				printf(ANSI_COLOR_GREEN "Object Cleared!\n");
-				//printf("\n");
-				//printf("\n");	
-				pin_flag = 0;
+			//	off_wait_counter++;
+			//	if(off_wait_counter>2)
+			//	{
+					digitalWrite(pin, LOW) ;
+					//printf(ANSI_COLOR_GREEN "Object Cleared!		[ObjectPixelValue = %5.1f] < THRESHOLD\n",main_diff);
+					printf(ANSI_COLOR_GREEN);
+					//printf("\n");
+					//printf("\n");	
+					pin_flag = 0;
+					STATUS = "CLEAR";
+			//		on_wait_counter = 0;
+			//	}
 			}
+			printf("[ObjectPixelValue = %5.1f] STATUS = %s\n",main_diff,STATUS);
+			ClearScreen();
 			//printf("main_diff = %.1f\n",main_diff);	
 			//printf("\n");
 			//printf("\n");	

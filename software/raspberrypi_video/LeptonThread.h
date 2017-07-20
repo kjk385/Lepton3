@@ -14,6 +14,8 @@
 #define PACKETS_PER_FRAME 60
 #define FRAME_SIZE_UINT16 (PACKET_SIZE_UINT16*PACKETS_PER_FRAME)
 
+void ClearScreen();
+
 class LeptonThread : public QThread
 {
   Q_OBJECT;
