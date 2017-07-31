@@ -24,7 +24,7 @@ int SpiOpenPort (int spi_device)
 	spi_bitsPerWord = 8;
 
 	//----- SET SPI BUS SPEED -----
-	spi_speed = 23000000;				//1000000 = 1MHz (1uS per bit)
+	spi_speed = 16000000;				//1000000 = 1MHz (1uS per bit)
 
 
 	if (spi_device)

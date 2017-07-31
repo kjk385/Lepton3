@@ -19,7 +19,7 @@
 
 static int pixel_value[19680];
 static int object_detection_counter;
-
+static	float main_diff1;
 LeptonThread::LeptonThread() : QThread()
 {
 }
@@ -77,10 +77,6 @@ void LeptonThread::run()
 	wiringPiSetup();
 	pinMode(pin, OUTPUT);
 	
-
-	
-	
-	
 	//open spi port
 	SpiOpenPort(0);
 	
@@ -102,10 +98,6 @@ void LeptonThread::run()
 				j = -1;
 				resets += 1;
 				usleep(10);
-				//Note: we've selected 750 resets as an arbitrary limit, since there should never be 750 "null" packets between two valid transmissions at the current poll rate
-				//By polling faster, developers may easily exceed this count, and the down period between frames may then be flagged as a loss of sync
-			
-				
 				if(resets == 2750) {
 					error_counter++;
 				//	printf("error_counter = %d\n",error_counter);
@@ -126,12 +118,9 @@ void LeptonThread::run()
 					lepton_perform_reboot();
 					error_counter = 0;
 					usleep(3000000);
-				}
-				
-				
+				}				
 			}
-			
-			
+	
 			
 		}
 		//printf("error_counter = %d\n",error_counter);
@@ -152,15 +141,21 @@ void LeptonThread::run()
 		segmentId = (result[3280]/16);
 	
 
-//	printf("************Segment ID = %d****************\n",(result[3280]/16));
+
+/************************************************* Check segmentID and organize segments in mainframe_buffer  ********************************************************************/
+
 	if (segmentId != 0){
 		
 		if (segmentId == 1 ){
+			m = 0;
+			
 			//result1 = (uint8_t *)result;
 			for (int n=0;n<9840;n++){
-						result1[n] = result[n];
+						//result1[n] = result[n];
+						mainBuffer[m] = result[n];
+						m++;
 					}
-			//printf("result1 Segment ID = %d\n",(result1[3280]/16));
+		//	printf("result1 Segment ID = %d\n",(result[3280]/16));
 			segmentReceived_flag1 = 1;
 			segmentReceived_flag2 = 0;
 			segmentReceived_flag3 = 0;
@@ -169,9 +164,11 @@ void LeptonThread::run()
 		if (segmentId == 2 && segmentReceived_flag1 == 1){
 			//result2 = (uint8_t *)result;
 			for (int n=0;n<9840;n++){
-						result2[n] = result[n];
+						//result2[n] = result[n];
+						mainBuffer[m] = result[n];
+						m++;
 					}
-		//	printf("result2 Segment ID = %d\n",(result2[3280]/16));
+		//	printf("result2 Segment ID = %d\n",(result[3280]/16));
 			segmentReceived_flag2 = 1;
 			segmentReceived_flag1 = 0;
 			
@@ -179,69 +176,33 @@ void LeptonThread::run()
 		if (segmentId == 3 && segmentReceived_flag2 == 1){
 			//result3 = (uint8_t *)result;
 			for (int n=0;n<9840;n++){
-						result3[n] = result[n];
+						//result3[n] = result[n];
+						mainBuffer[m] = result[n];
+						m++;	
 					}
-		//	printf("result3 Segment ID = %d\n",(result3[3280]/16));
+		//	printf("result3 Segment ID = %d\n",(result[3280]/16));
 			segmentReceived_flag3 = 1;
+			segmentReceived_flag2 = 0;
 		}
 		if (segmentId == 4 && segmentReceived_flag3 == 1){
 			//result4 = (uint8_t *)result;
 			for (int n=0;n<9840;n++){
-						result4[n] = result[n];
+						//result4[n] = result[n];
+						mainBuffer[m] = result[n];
+						m++;	
 					}
-		//	printf("result4 Segment ID = %d\n",(result4[3280]/16));
+		//	printf("result4 Segment ID = %d\n",(result[3280]/16));
 			segmentReceived_flag4 = 1;
-			segmentReceived_flag1 = 0;
+			segmentReceived_flag3 = 0;
 			
 		//	fprintf(pFile,"segmentReceived_flag4 = %d\n",segmentReceived_flag4);
 		}
 	
-		//printf("%d\n",sizeof(mainBuffer));	
-		
-		//printf("segmentReceived_flag4 = %d\n",segmentReceived_flag4);
+	
 		
 		if(segmentReceived_flag4 ==1){
-				m = 0;
-				//printf("%d\n",m);
-				if (m==0)
-				{
-					for (int n=0;n<9840;n++){
-						mainBuffer[m] = result1[n];
-						m++;	
-						
-					}
-					
-				}
 			
-				if (m==9840)
-				{
-				
-					for (int n=0;n<9840;n++){
-						mainBuffer[m] = result2[n];
-						m++;	
-					}
-					
-				}
-				if (m==19680)
-				{
-					for (int n=0;n<9840;n++){
-						mainBuffer[m] = result3[n];
-						m++;	
-					}
-					
-				}
-				if (m==29520)
-				{
-					for (int n=0;n<9840;n++){
-						mainBuffer[m] = result4[n];
-						m++;	
-					}
-							
-					
-				}
-	
-
-			
+			segmentReceived_flag4 = 0;
 			
 /**************************************************MAIN FRAME BUFFER *********************************************************/
 			mainframeBuffer = (uint16_t *)mainBuffer;
@@ -283,44 +244,36 @@ void LeptonThread::run()
 			
 			
 			float main_diff = main_maxValue - main_minValue;
+		
+			if(main_diff < 10000){
+				main_diff1 = main_diff;
+			}
+			else{
+				main_diff = main_diff1;
+			}
+			
+			
 			float main_scale = 255/main_diff;
 			
-			//printf("main_diff = %5.1f, maxValue = %6d, minValue =%6d\n",main_diff,main_maxValue,main_minValue);	
-			//printf("\n");
-			//printf(ANSI_COLOR_RESET "[ObjectPixelValue = %5.1f]\n",main_diff);
-			
 			if(pin_flag == 0 && main_diff > 200){
-			//	on_wait_counter++;
-			//	if(on_wait_counter>2)
-			//	{
+	
 					digitalWrite(pin,HIGH) ;
-					//printf(ANSI_COLOR_RED "Object Detected!  		[ObjectPixelValue = %5.1f] > THRESHOLD\n",main_diff);
 					printf(ANSI_COLOR_RED);
 					pin_flag = 1;
 					STATUS = "DETECTED";
-			//		off_wait_counter = 0; 
-			//	}
+			
 			}
 			if(pin_flag == 1 && main_diff < 200){
-			//	off_wait_counter++;
-			//	if(off_wait_counter>2)
-			//	{
+			
 					digitalWrite(pin, LOW) ;
-					//printf(ANSI_COLOR_GREEN "Object Cleared!		[ObjectPixelValue = %5.1f] < THRESHOLD\n",main_diff);
+				
 					printf(ANSI_COLOR_GREEN);
-					//printf("\n");
-					//printf("\n");	
 					pin_flag = 0;
 					STATUS = "CLEAR";
-			//		on_wait_counter = 0;
-			//	}
 			}
 			printf("[ObjectPixelValue = %5.1f] STATUS = %s\n",main_diff,STATUS);
 			ClearScreen();
-			//printf("main_diff = %.1f\n",main_diff);	
-			//printf("\n");
-			//printf("\n");	
-				
+			
 
 /************************************************DISPLAY PIXELS ************************************************************/
 
@@ -332,33 +285,25 @@ void LeptonThread::run()
 					continue;
 				}
 				main_value = (mainframeBuffer[i] - main_minValue) * main_scale;
-				//printf("Value[%d] = %d),",i,value);
-				//pixel_value[i] = main_value;
 				const int *colormap = colormap_ironblack;
 				color = qRgb(colormap[3*main_value], colormap[3*main_value+1], colormap[3*main_value+2]);
-				//printf("counter = %d,",counter);
 				counter++;
 				if(counter>80 )
-				 {
-					
+				 {	
 					counter=1;
 					c = c xor 1;
 				 }
 			
 						
-				if(c==0 && display_flag ==0){
-				main_column = (i % 164 ) - 4;
+				if(c==0 && display_flag ==0)
+					{
+						main_column = (i % 164 ) - 4;
+					}
 				
-				}
-				
-				if(c==1 && display_flag ==0){
-				main_column = (i % 164 ) - 2;
-				
-				}
-				
-					
-				
-				
+				if(c==1 && display_flag ==0)
+					{
+						main_column = (i % 164 ) - 2;
+					}	
 				main_row = i / 164;
 				myImage.setPixel(main_column, main_row, color);
 		
@@ -368,7 +313,7 @@ void LeptonThread::run()
 			//lets emit the signal for update
 			emit updateImage(myImage);
 			frame_counter++;
-		//	printf("frame_counter = %d\n",frame_counter);
+			//printf("frame_counter = %d\n",frame_counter);
 		//	printf("resets = %d\n",resets);
 			error_counter = 0;
 		
